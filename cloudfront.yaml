@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Deploy cloudfront
+
+Parameters:
+  s3Stack:
+    Type: String
+    Default: static-web-site
+
+Resources:
+  myDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: Demo distribution
+        DefaultCacheBehavior:
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+          TargetOriginId: widgetOrigin
+          ViewerProtocolPolicy: "redirect-to-https"
+        Enabled: true
+        DefaultRootObject: "index.html"
+        Origins:
+          - DomainName: { "Fn::ImportValue": !Sub "${s3Stack}-domain" }
+            Id: widgetOrigin
+            S3OriginConfig:
+              OriginAccessIdentity:
+                !Join [
+                  "",
+                  [
+                    "origin-access-identity/cloudfront/",
+                    { "Fn::ImportValue": !Sub "${s3Stack}-cloudFrontUser" },
+                  ],
+                ]
+        PriceClass: "PriceClass_All"
+        ViewerCertificate:
+          AcmCertificateArn: "arn:aws:acm:us-east-1:145830725538:certificate/1ee7518e-ff9b-4bf9-a302-4ca96ee6f640"
+          MinimumProtocolVersion: "TLSv1.2_2018"
+          SslSupportMethod: "sni-only"

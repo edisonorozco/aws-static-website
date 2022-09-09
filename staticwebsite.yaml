@@ -1,0 +1,68 @@
+Description: Deploy static web site
+
+Parameters:
+  project:
+    Description: Nombre del proyecto.
+    Type: String
+    Default: gestion-precios-negocios
+  environment:
+    Description: Ambiente donde se despliega.
+    Type: String
+    Default: dev
+  applicationcode:
+    Description: Codigo AW de la aplicacion.
+    Type: String
+    Default: nu0091003
+  s3Stack:
+    Type: String
+    Default: static-web-site
+
+Resources:
+  CloudFrontUser:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: "OAI User for demo s3 website"
+
+  BucketS3ForWebSite:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName:
+        !Join [
+          "-",
+          [!Ref applicationcode, !Ref project, cf, !Ref environment, s3],
+        ]
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.hmtl
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn:
+      - BucketS3ForWebSite
+      - CloudFrontUser
+    Properties:
+      Bucket: !Ref BucketS3ForWebSite
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontUser}"
+            Resource:
+              !Join ["", ["arn:aws:s3:::", !Ref BucketS3ForWebSite, "/*"]]
+
+Outputs:
+  domain:
+    Value: !GetAtt BucketS3ForWebSite.DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-domain"
+
+  cloudFrontUser:
+    Value: !Ref CloudFrontUser
+    Export:
+      Name: !Sub ${AWS::StackName}-cloudFrontUser
